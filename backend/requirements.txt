@@ -1,0 +1,10 @@
+crewai>=1.15
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+pyyaml
+requests
+beautifulsoup4
+python-docx
+fpdf2

@@ -1,0 +1,130 @@
+research_task:
+  description: |
+    Research this lead for a medical billing outreach campaign.
+
+    LEAD (from the lead list; may be incomplete or slightly wrong):
+    {lead_block}
+
+    WEBSITE CONTENT (already scraped for you from {website}; may be empty if the site failed):
+    ---
+    {website_text}
+    ---
+
+    SPECIALTY PLAYBOOK. These are common billing pain points for this kind of
+    practice. Treat them as hypotheses to confirm or rule out, not as facts:
+    {playbook}
+
+    HOW TO WORK:
+    1. Read the website content first. It is your best source.
+    2. Use the web_search tool for what the website doesn't cover. Good searches:
+       - "{company}" {city} reviews billing OR insurance
+       - "{company}" new location OR new provider OR opening
+       - "{company}" hiring medical biller OR billing specialist OR front desk
+       - "{full_name}" {company}
+       Run 2 to 4 searches. Stop when you have enough. Don't burn searches on things you already know.
+    3. Use scrape_website on a specific page (e.g. /insurance, /about, /careers)
+       only if it would clearly add something.
+    4. Confirm the person: their role, credentials (MD, DO, PA, NP, practice
+       manager), and whether they are an owner or decision-maker for billing.
+
+    STRICT RULES:
+    - Never invent facts. If something isn't found, write "not found".
+    - Attach a source (URL or "website") to every fact in "Personalization hooks".
+    - If the lead data conflicts with what you find (wrong website, person
+      no longer there, practice closed), say so clearly at the top under "WARNINGS".
+    - Patient reviews that complain about billing, surprise bills, or insurance
+      problems are gold. Quote them briefly with the source.
+    - Job postings for billers, coders, or front desk staff are a strong buying signal. Note them.
+  expected_output: |
+    A markdown brief with exactly these sections:
+
+    ## WARNINGS
+    (data conflicts or "none")
+
+    ## Practice snapshot
+    - Practice name, specialty and sub-specialties
+    - Number of providers (names if listed), number of locations and cities
+    - Ownership: independent / group / hospital-owned / PE-backed (and source)
+    - Years in operation if found
+
+    ## The person
+    - Name, title, credentials, role in the practice, decision-maker for billing? (yes / likely / unlikely)
+    - Anything specific about them (training, focus areas, quotes, community involvement)
+
+    ## Services and payer signals
+    - Key services and procedures, especially ones with complex coding
+    - Insurance accepted / out-of-network / cash-pay / cosmetic mix
+    - Patient portal / online payment / EHR or PM software if visible
+
+    ## Growth and change signals
+    - New locations, new providers, expansions, acquisitions, hiring (with dates if found)
+
+    ## Billing pain hypotheses (ranked, most likely first)
+    For each: the hypothesis, the evidence behind it, and confidence (high/medium/low)
+
+    ## Personalization hooks (3-5)
+    Concrete, verifiable details usable in an email's first line, each with its source.
+    Prefer specific and recent over generic ("added Dr. Patel and a second
+    location in Frisco this year" beats "great reviews").
+
+    ## Recommended angle
+    One or two sentences: which pain + which hook the email should lead with, and why.
+
+email_task:
+  description: |
+    Write a 3-email cold outreach sequence to {full_name} ({title} at {company}),
+    based on the research brief from the previous task.
+
+    SENDER PROFILE (the only source for claims about the sender):
+    {sender_block}
+
+    THE STRUCTURE OF EMAIL 1:
+    1. First line: one specific observation about their practice or about them,
+       taken from "Personalization hooks". It must be something only this practice
+       could receive. No compliments ("impressive", "love what you're doing").
+       Never open with "I", "My name is", "Hope", or "I came across".
+    2. Bridge: connect that observation to ONE billing pain from the brief, and
+       say it the way a practice manager would ("when a practice adds a second
+       location, credentialing the new providers usually stalls claims for weeks").
+       Phrase it as what typically happens, not as an accusation about them.
+    3. One sentence on what the sender does about that pain. Use a proof point
+       only if one is in the sender profile, word for word in meaning. Never invent numbers.
+    4. CTA: one low-friction yes/no question. Follow the sender's cta_style.
+    5. Sign-off: sender name, title, company. Nothing else.
+
+    HARD RULES (apply to all three emails):
+    - NO INVENTED CLAIMS. Do not write any number, percentage, dollar amount,
+      result, client, or "I've seen..." experience unless it appears in the sender
+      profile's proof_points. "Practices like yours often..." is fine; "we recover
+      5-7%" is not, unless it's a listed proof point.
+    - Never quote or point at negative patient reviews, lawsuits, or complaints.
+      Use them only as private evidence for which pain to pick. The email should
+      read as helpful, never as "I found dirt on you".
+    - Don't assume who the reader is ("I know you're not the billing team").
+    - Email 1 body: 60-110 words. Follow-ups: 30-70 words each.
+    - Subject lines: 2-6 words, lowercase except proper nouns, no punctuation
+      tricks, no "Re:", no "Quick question". Referencing the practice, the
+      location, or the pain works best (e.g. "billing for the frisco office").
+    - Plain text only. No bullet points, no bold, no links except the calendar
+      link if one is provided. No emojis. No em dashes.
+    - Banned words and phrases: "I hope this email finds you well", "reaching out",
+      "touch base", "circle back", "synergy", "leverage", "streamline",
+      "revolutionize", "cutting-edge", "game-changer", "seamless", "unlock",
+      "in today's fast-paced", "I wanted to", "just following up", "bump".
+    - Use their first name once, in the greeting ("Hi {first_name},"). Use "Dr. <Last name>"
+      instead if they are a physician (MD/DO) and the brief confirms it.
+    - If the brief has WARNINGS that make the lead unusable (wrong person, closed
+      practice), still write the emails but begin `personalization_notes` with "CHECK LEAD:".
+    - If the sender profile still has placeholder values like "YOUR NAME", keep them as-is.
+
+    FOLLOW-UP 1 (sent ~3 days later, same thread): add new value. Use a different
+    pain hypothesis or a short, concrete insight about how practices like theirs
+    lose revenue. Don't summarize email 1.
+    FOLLOW-UP 2 (sent ~4 days after that, same thread): a short, polite close-the-loop
+    note. Offer something useful for free (e.g. a quick denial or A/R review) and
+    make it easy to say "not now" or name the right person.
+  expected_output: |
+    JSON matching the EmailSequence schema: subject, body, follow_up_1_subject,
+    follow_up_1_body, follow_up_2_subject, follow_up_2_body, personalization_notes
+    (1-3 sentences: which hook and which pain you used, with the source, so a human can
+    verify before sending).

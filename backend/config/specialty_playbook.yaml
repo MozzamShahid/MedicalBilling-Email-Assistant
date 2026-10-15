@@ -1,0 +1,95 @@
+# Billing pain points by specialty. The matching entry is handed to both agents
+# as hypotheses to verify. They are not facts about any particular practice.
+# Add or edit specialties freely; `keywords` are matched against the lead's
+# industry / title / company / research text.
+
+dermatology:
+  keywords: [derm, dermatolog, skin, mohs, aesthetic, cosmetic]
+  pain_points:
+    - Splitting cosmetic (cash) vs medical (insurance) services on the same visit, and the documentation that requires
+    - Modifier 25 on E/M plus same-day procedures (biopsies, destructions) drawing audits and denials
+    - Mohs surgery and repair coding (17311-17315, adjacent tissue transfer), with frequent underpayment
+    - Prior authorizations for biologics (Dupixent, Skyrizi, etc.) slowing starts and creating write-offs
+    - Pathology/dermpath billing if they read in-house
+
+orthopedics:
+  keywords: [ortho, sports medicine, spine, joint, hand surgery]
+  pain_points:
+    - Global surgical periods and modifier 24/57/79 errors
+    - Prior auth for MRIs, injections, and surgeries
+    - DME billing (braces, crutches) and workers' comp / personal injury claims
+    - High-dollar claims where one denial hurts cash flow
+
+cardiology:
+  keywords: [cardio, heart, vascular, electrophysiology]
+  pain_points:
+    - Diagnostic testing (echo, stress, Holter) with professional/technical component splits (26/TC)
+    - Device monitoring and remote monitoring codes left unbilled
+    - Prior auth for imaging and procedures
+
+behavioral_health:
+  keywords: [psychiatr, psycholog, behavioral, mental health, therapy, counsel, addiction, substance]
+  pain_points:
+    - Time-based psychotherapy codes and add-on codes with E/M
+    - Authorizations and session limits per payer
+    - Credentialing many clinicians across payers, and telehealth place-of-service and modifier rules
+    - Out-of-network and superbill workflows
+
+physical_therapy:
+  keywords: [physical therapy, physiotherapy, rehab, occupational therapy, speech therapy, chiropract]
+  pain_points:
+    - 8-minute rule and timed-unit billing
+    - KX modifier / therapy threshold tracking and plan-of-care recertifications
+    - Visit-limit authorizations and frequent small-dollar denials that nobody works
+    - Personal injury / auto claims
+
+primary_care:
+  keywords: [family medicine, internal medicine, primary care, pediatric, general practice, concierge]
+  pain_points:
+    - Under-billing preventive plus problem-oriented visits on the same day
+    - Missed revenue from CCM, TCM, AWV, and RPM codes
+    - High volume of low-dollar claims, where denials pile up quietly
+    - Eligibility errors at check-in
+
+ob_gyn:
+  keywords: [ob/gyn, obgyn, obstetric, gynecolog, women's health, fertility]
+  pain_points:
+    - Global obstetric package billing and split-care scenarios
+    - Ultrasound and in-office procedure coding
+    - Fertility benefits verification and cash-pay coordination
+
+gastroenterology:
+  keywords: [gastro, gi , endoscopy, colonoscopy, hepatolog]
+  pain_points:
+    - Screening that turns diagnostic (modifier PT/33) and the resulting patient balance disputes
+    - ASC vs office place of service billing
+    - Anesthesia coordination and prior auth
+
+ophthalmology_optometry:
+  keywords: [ophthalm, optometr, eye, retina, cataract, vision]
+  pain_points:
+    - Medical vs routine vision plan billing on the same patient
+    - Injectable drug billing (anti-VEGF) and J-code / units accuracy
+    - Cataract global periods and premium lens patient-responsibility handling
+
+urgent_care:
+  keywords: [urgent care, walk-in, immediate care, occupational medicine]
+  pain_points:
+    - High volume with fast eligibility needs
+    - S-codes vs E/M by payer, and occupational medicine / workers' comp billing
+    - Patient balance collection after the visit
+
+podiatry:
+  keywords: [podiatr, foot, ankle]
+  pain_points:
+    - Routine foot care coverage rules (Q modifiers, class findings)
+    - DME and orthotics billing
+    - Wound care and debridement coding
+
+general:
+  keywords: []
+  pain_points:
+    - Denials that never get reworked, plus aging A/R past 90 days
+    - Front-desk eligibility errors that turn into denials
+    - Staff turnover in the billing role and knowledge walking out the door
+    - Credentialing delays when adding new providers
