@@ -261,7 +261,7 @@ def delete_lead(lead_id: int) -> dict[str, bool]:
 def export(fmt: str = "docx", ids: str = "", research: bool = False) -> Response:
     wanted = {int(i) for i in ids.split(",") if i.strip().isdigit()}
     leads = [
-        lead
+        db.get_lead(lead["id"]) if research else lead  # the list omits the research text
         for lead in db.list_leads()
         if lead.get("body") and (not wanted or lead["id"] in wanted)
     ]

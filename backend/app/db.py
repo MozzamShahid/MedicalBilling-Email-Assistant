@@ -90,26 +90,45 @@ class Conn:
         return rows[0] if rows else None
 
 
+_pools: dict[str, Any] = {}
+
+
+def _pool(url: str) -> Any:
+    """A small pool per database URL. Opening a connection to Supabase takes
+    over a second, so connections are reused; idle ones close after 2 minutes."""
+    if url not in _pools:
+        from psycopg.rows import dict_row
+        from psycopg_pool import ConnectionPool
+
+        _pools[url] = ConnectionPool(
+            url,
+            min_size=0,
+            max_size=5,
+            max_idle=120,
+            # prepare_threshold=None: Supabase's transaction pooler can't use prepared statements.
+            kwargs={"row_factory": dict_row, "prepare_threshold": None},
+            open=True,
+        )
+    return _pools[url]
+
+
 @contextmanager
 def connect(write: bool = False, url: str | None = None) -> Iterator[Conn]:
-    """Open a connection, commit on success, always close.
+    """Get a connection, commit on success, roll back on error.
 
-    Connections are short-lived on purpose: nothing stays open while the app is
-    idle, so a sleeping host (Railway serverless) can actually go to sleep.
     `url=""` forces the local SQLite file (used by the Supabase migration)."""
     url = pg_url() if url is None else url
     if url:
-        import psycopg
-        from psycopg.rows import dict_row
-
-        # prepare_threshold=None: Supabase's transaction pooler can't use prepared statements.
-        raw = psycopg.connect(url, row_factory=dict_row, prepare_threshold=None)
+        # The pool commits (or rolls back on error) and takes the connection back.
+        with _pool(url).connection() as raw:
+            yield Conn(raw, True)
+        return
     else:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         raw = sqlite3.connect(DB_PATH, check_same_thread=False)
         raw.row_factory = sqlite3.Row
-    # SQLite allows one writer at a time; Postgres handles concurrency itself.
-    with _sqlite_lock if (write and not url) else nullcontext():
+    # SQLite allows one writer at a time.
+    with _sqlite_lock if write else nullcontext():
         try:
             yield Conn(raw, bool(url))
             raw.commit()
@@ -214,10 +233,15 @@ def get_lead(lead_id: int) -> dict[str, Any] | None:
         return lead
 
 
+# Large text the lead table never shows; get_lead still returns it for the drawer.
+_LIST_SKIP = {"research", "keywords", "technologies"}
+
+
 def list_leads() -> list[dict[str, Any]]:
+    cols = ", ".join(["id", *(f for f in LEAD_FIELDS + SYSTEM_FIELDS if f not in _LIST_SKIP)])
     with connect() as db:
         return db.q(
-            f"SELECT *, {EMAILS_SENT_SQL} AS emails_sent FROM leads "
+            f"SELECT {cols}, {EMAILS_SENT_SQL} AS emails_sent FROM leads "
             "ORDER BY COALESCE(next_follow_up_at, '9999'), id DESC"
         )
 
