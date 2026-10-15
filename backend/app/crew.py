@@ -153,6 +153,8 @@ def suggest_subjects(lead: dict[str, Any]) -> list[str]:
         {
             "model": os.getenv("WRITER_MODEL", "deepseek/deepseek-v4-pro"),
             "temperature": 0.9,
+            # Without this, Flash can "think" for ~19k tokens (2+ minutes) on these prompts.
+            "reasoning": {"enabled": False},
             "response_format": {"type": "json_object"},
             "messages": [{"role": "user", "content": prompt}],
         }
@@ -195,6 +197,8 @@ def rewrite_body(lead: dict[str, Any], field: str) -> str:
         {
             "model": os.getenv("WRITER_MODEL", "deepseek/deepseek-v4-pro"),
             "temperature": 0.9,
+            # Without this, Flash can "think" for ~19k tokens (2+ minutes) on these prompts.
+            "reasoning": {"enabled": False},
             "response_format": {"type": "json_object"},
             "messages": [{"role": "user", "content": prompt}],
         }

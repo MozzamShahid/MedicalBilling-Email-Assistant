@@ -30,6 +30,7 @@ def chat(payload: dict, timeout: int = 90) -> dict:
         url = "https://api.deepseek.com/chat/completions"
         key = os.environ["DEEPSEEK_API_KEY"]
         payload = {**payload, "model": _bare(payload["model"])}
+        payload.pop("reasoning", None)  # OpenRouter-only option
     else:
         url = "https://openrouter.ai/api/v1/chat/completions"
         key = os.environ["OPENROUTER_API_KEY"]
