@@ -56,26 +56,44 @@ To work on the frontend with hot reload, keep the backend running and run `npm r
   Add real `proof_points` (results, client counts). The writer is told never to invent numbers, so this list is the
   only way stats end up in emails.
 - Always read the **"Why this angle"** note and skim the research before sending. Both cite their sources.
-  Leads marked `CHECK LEAD:` have data problems (wrong person, wrong website, practice closed).
+  Leads marked `POOR FIT:` are residents, big health-system employees, wrong people, or closed practices.
 - Skip leads that won't buy outsourced billing: residents, and employees of large health systems
   (Mount Sinai, Northwell, etc.) or PE-backed groups with in-house billing.
 
 ## Cost and speed
 
-Roughly 2–4 minutes and a few cents per lead (the web searches are most of the cost, about $0.02 each).
+Basic mode: well under a cent to a couple of cents per lead and under a minute. Deep mode: 2–4 minutes and a few cents
+per lead (the web searches are most of the cost, about $0.02 each).
 Tune these in `backend/.env`:
 
 | Setting | Default | What it does |
 |---|---|---|
+| `RESEARCH_MODE` | `basic` | `basic`: Apollo data + website only, no web searches (cheapest). `deep`: adds the web-search research agent |
+| `LLM_PROVIDER` | `openrouter` | `deepseek` calls the DeepSeek API directly (set `DEEPSEEK_API_KEY`) |
 | `RESEARCH_MODEL` | `deepseek/deepseek-v4-flash` | researcher, web search, and text-import model |
 | `WRITER_MODEL` | `deepseek/deepseek-v4-pro` | email writer model |
 | `WEB_SEARCH_BUDGET` | `4` | max web searches per lead |
 | `MAX_PARALLEL_LEADS` | `3` | leads researched at the same time |
 | `FOLLOW_UP_DAYS` | `3,4` | days until follow-up 1, then follow-up 2 |
 
+## Logins and roles
+
+Set these in `backend/.env` (see `.env.example`):
+
+| Role | Settings | Can do |
+|---|---|---|
+| Admin | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | everything: import, research, delete, plus all sender actions |
+| Sender | `SENDER_EMAIL`, `SENDER_PASSWORD` | view leads, rewrite emails, get subject ideas, open in Gmail, mark sent, set status |
+
+`SESSION_SECRET` signs the login cookie; changing it logs everyone out.
+
 ## Follow-up workflow
 
-Send email 1 from your own mailbox ("Open in mail" or "Copy"), then click **Mark email 1 sent**. The lead
+Click **Open in Gmail** on email 1 (Gmail opens with the recipient, subject, and text filled in), send it,
+then click **Yes, I sent it**. Follow-ups open as replies ("Re: ...") so they stay in one thread.
+Not happy with a draft? **↻ Subject ideas** suggests new subject lines, **↻ Rewrite** on an email card rewrites just
+that email, and **↻ Rewrite emails** rewrites the whole sequence. Tick several leads to mark a step sent, change
+status, or delete them in bulk. The lead
 gets a follow-up date. Each day, open the **Follow-ups due** tab, send the next email in the same thread,
 and click **Mark follow-up sent**. When someone answers, set the status to Replied / Meeting / Not interested.
 That stops the reminders.

@@ -1,39 +1,51 @@
-# WHO IS SENDING. Fill this in. The writer agent only uses what is written here.
+# WHO IS SENDING. The writer agent only uses what is written here.
 # It never invents stats, clients, or guarantees, so the more real proof you
 # add, the stronger the emails get.
 
-company_name: "YOUR COMPANY NAME"
-sender_name: "YOUR NAME"
-sender_title: "Founder"
-website: "yourcompany.com"
+company_name: "Clinirev"
+sender_name: "Dr. Anas"
+sender_title: "CEO"
+website: ""  # e.g. clinirev.com
 phone: ""
 calendar_link: ""  # e.g. https://calendly.com/you/15min (leave empty to ask for a reply instead)
 
+# How Anas introduces himself in email 1 (the writer keeps it to one sentence).
+intro: "I'm Dr. Anas. I run Clinirev, a medical billing company, and my team in Pakistan works with physician practices in the US."
+team_location: "Pakistan"
+
+# US states where Clinirev ACTUALLY has clients right now, e.g. ["TX", "NY"].
+# The email says "doctors in Texas" only when the lead's state is listed here.
+# Otherwise it says "practices across the US". Never list a state you don't serve.
+client_states: []
+
 # One sentence: what you do and for whom.
-one_liner: "We handle end-to-end medical billing and revenue cycle management for independent practices."
+one_liner: "Clinirev takes the billing, credentialing, and documentation work off a practice's plate so the team can focus on patients."
 
-# Services you actually offer (the writer picks the 1 that matches the lead's pain).
+# Services you actually offer (the writer picks the ONE that best matches the lead).
 services:
-  - Claims submission and scrubbing
-  - Denial management and appeals
-  - A/R follow-up and old A/R recovery
-  - Eligibility and benefits verification
-  - Prior authorizations
-  - Credentialing and payer enrollment
-  - Patient statements and patient balance follow-up
-  - Coding review (CPT, ICD-10, modifiers)
+  - "Medical scribing (providers spend less time on charts after hours)"
+  - "Revenue cycle management, end to end: advance eligibility and benefits verification, claims, denial fixes, and A/R follow-up"
+  - "Credentialing and recredentialing of providers in payer networks (new providers, new locations, renewals)"
 
-# REAL proof points only. Delete examples you can't back up.
-# Leave this list empty and the writer won't claim any numbers.
+# Systems the team already works in every day. If the lead's Apollo technologies
+# or website mention one of these, the writer can say so: it removes a common objection.
+ehr_systems:
+  - athenahealth
+  - eClinicalWorks
+  - Practice Fusion
+  - Office Ally
+  - SimplePractice
+  - AdvancedMD
+  - CollaborateMD
+
+# REAL proof points only. Leave this list empty and the writer won't claim any numbers.
 proof_points: []
 #  - "Cut a 4-provider dermatology group's denial rate from 14% to 5% in 90 days"
-#  - "Clean claim rate above 97% across our clients"
 
 # Pricing / risk-reversal angle, if any (e.g. "percentage of collections, no setup fee").
 offer: ""
 
 # The ask. Keep it small. Low-friction CTAs get more replies than "book a demo".
-cta_style: "Ask a single yes/no question about whether a short call or a free billing audit is worth it."
+cta_style: "End with one easy, friendly question, e.g. whether it's worth a short chat or a free look at their denials. No pressure."
 
-# Tone notes for the writer.
-tone: "Plain, peer-to-peer, specific. Sounds like a person who understands practice operations, not a marketer."
+tone: "Warm, kind, and brief. Like a helpful person who understands how hard running a practice is. Never salesy or pushy."

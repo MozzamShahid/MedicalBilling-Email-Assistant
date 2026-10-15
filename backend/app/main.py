@@ -11,14 +11,14 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile  # noqa: E402
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
-from fastapi.responses import Response  # noqa: E402
+from fastapi.responses import JSONResponse, Response  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
-from . import db  # noqa: E402
-from .crew import run_lead  # noqa: E402
+from . import auth, db  # noqa: E402
+from .crew import BODY_LABELS, rewrite_body, run_lead, suggest_subjects  # noqa: E402
 from .export import to_docx, to_pdf  # noqa: E402
 from .importer import parse_csv, parse_text  # noqa: E402
 
@@ -34,15 +34,58 @@ app.add_middleware(
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
+
+
+@app.middleware("http")
+async def check_login(request: Request, call_next):
+    """Every /api route except login needs a valid session cookie."""
+    path = request.url.path
+    if path.startswith("/api/") and path not in ("/api/login", "/api/logout"):
+        user = auth.current_user(request)
+        if not user:
+            return JSONResponse({"detail": "Please log in"}, status_code=401)
+        request.state.user = user
+    response = await call_next(request)
+    if not path.startswith(("/api/", "/assets/")):
+        # Always load the latest build of the page, never a stale cached copy.
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+class Login(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/api/login")
+def login(body: Login) -> Response:
+    cookie, role = auth.login(body.email, body.password)
+    resp = JSONResponse({"email": body.email.strip().lower(), "role": role})
+    resp.set_cookie(auth.COOKIE, cookie, max_age=auth.MAX_AGE, httponly=True, samesite="lax")
+    return resp
+
+
+@app.post("/api/logout")
+def logout() -> Response:
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(auth.COOKIE)
+    return resp
+
+
+@app.get("/api/me")
+def me(request: Request) -> dict[str, str]:
+    return request.state.user
+
 db.init_db()
 # A restart kills in-flight jobs; put those leads back so they can be re-run.
 for _lead in db.list_leads():
     if _lead["status"] == "researching":
-        db.update_lead(_lead["id"], status="new")
+        db.update_lead(_lead["id"], status="drafted" if _lead["body"] else "new")
 
 
-def _process(lead_id: int) -> None:
+def _process(lead_id: int, prev_status: str) -> None:
     lead = db.get_lead(lead_id)
     if not lead:
         return
@@ -50,11 +93,15 @@ def _process(lead_id: int) -> None:
         research, emails = run_lead({k: lead.get(k) or "" for k in db.LEAD_FIELDS})
     except Exception as e:  # surface any failure in the CRM instead of losing it
         log.exception("Lead %s failed", lead_id)
-        db.update_lead(lead_id, status="error", error=str(e)[:2000])
+        db.update_lead(
+            lead_id, status="error" if prev_status in ("new", "error") else prev_status, error=str(e)[:2000]
+        )
         db.log(lead_id, f"Research failed: {str(e)[:200]}")
         return
-    db.update_lead(lead_id, status="drafted", research=research, error="", **emails.model_dump())
-    db.log(lead_id, "Researched and emails drafted")
+    # Rewriting a lead that is already mid-sequence keeps its place in the sequence.
+    status = "drafted" if prev_status in ("new", "error", "drafted", "researching") else prev_status
+    db.update_lead(lead_id, status=status, research=research, error="", **emails.model_dump())
+    db.log(lead_id, "Emails rewritten" if prev_status != "new" else "Researched and emails drafted")
 
 
 def _queue(ids: list[int]) -> list[int]:
@@ -63,7 +110,7 @@ def _queue(ids: list[int]) -> list[int]:
         lead = db.get_lead(lead_id)
         if lead and lead["status"] != "researching":
             db.update_lead(lead_id, status="researching", error="")
-            pool.submit(_process, lead_id)
+            pool.submit(_process, lead_id, lead["status"])
             queued.append(lead_id)
     return queued
 
@@ -98,7 +145,7 @@ def get_lead(lead_id: int) -> dict[str, Any]:
     return lead
 
 
-@app.post("/api/leads/import")
+@app.post("/api/leads/import", dependencies=[Depends(auth.require_admin)])
 async def import_leads(
     file: UploadFile | None = File(None),
     text: str = Form(""),
@@ -124,8 +171,12 @@ class RunRequest(BaseModel):
 
 
 @app.post("/api/leads/run")
-def run_leads(req: RunRequest) -> dict[str, Any]:
+def run_leads(req: RunRequest, request: Request) -> dict[str, Any]:
     ids = req.ids
+    if request.state.user["role"] != "admin":
+        # Senders may only rewrite emails that were already drafted, not research new leads.
+        if ids is None or any(not (db.get_lead(i) or {}).get("body") for i in ids):
+            raise HTTPException(403, "Only the admin can research new leads")
     if ids is None:
         ids = [lead["id"] for lead in db.list_leads() if lead["status"] in ("new", "error")]
     return {"queued": _queue(ids)}
@@ -159,7 +210,41 @@ def mark_sent(lead_id: int) -> dict[str, Any]:
         raise HTTPException(400, str(e)) from e
 
 
-@app.delete("/api/leads/{lead_id}")
+@app.post("/api/leads/{lead_id}/subjects")
+def subjects(lead_id: int) -> dict[str, list[str]]:
+    lead = get_lead(lead_id)
+    if not lead.get("body"):
+        raise HTTPException(400, "Write the emails first")
+    try:
+        return {"subjects": suggest_subjects(lead)}
+    except Exception as e:
+        log.exception("Subject ideas failed for lead %s", lead_id)
+        raise HTTPException(502, f"Could not get subject ideas: {e}") from e
+
+
+class Rewrite(BaseModel):
+    field: str  # body, follow_up_1_body, or follow_up_2_body
+
+
+@app.post("/api/leads/{lead_id}/rewrite")
+def rewrite(lead_id: int, req: Rewrite) -> dict[str, Any]:
+    """Rewrite one email body, leaving the subject and the other emails alone."""
+    lead = get_lead(lead_id)
+    if req.field not in BODY_LABELS:
+        raise HTTPException(400, f"Unknown email {req.field}")
+    if not lead.get("body"):
+        raise HTTPException(400, "Write the emails first")
+    try:
+        text = rewrite_body(lead, req.field)
+    except Exception as e:
+        log.exception("Rewrite failed for lead %s", lead_id)
+        raise HTTPException(502, f"Could not rewrite the email: {e}") from e
+    db.update_lead(lead_id, **{req.field: text})
+    db.log(lead_id, f"{BODY_LABELS[req.field]} rewritten")
+    return get_lead(lead_id)
+
+
+@app.delete("/api/leads/{lead_id}", dependencies=[Depends(auth.require_admin)])
 def delete_lead(lead_id: int) -> dict[str, bool]:
     db.delete_lead(lead_id)
     return {"ok": True}

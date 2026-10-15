@@ -6,9 +6,8 @@ import json
 import os
 import re
 
-import requests
-
 from .db import LEAD_FIELDS
+from .llm import chat
 
 # Lowercased CSV header -> our field. Covers Apollo exports plus common variants.
 HEADER_ALIASES = {
@@ -45,6 +44,9 @@ HEADER_ALIASES = {
     "corporate phone": "phone",
     "mobile phone": "phone",
     "company phone": "phone",
+    "seniority": "seniority",
+    "keywords": "keywords",
+    "technologies": "technologies",
 }
 
 
@@ -75,10 +77,8 @@ def parse_text(text: str) -> list[dict[str, str]]:
     """Extract leads from free text (copied Apollo profiles, notes, signatures)."""
     if looks_like_csv(text):
         return parse_csv(text)
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
-        json={
+    data = chat(
+        {
             "model": os.getenv("RESEARCH_MODEL", "deepseek/deepseek-v4-flash"),
             "temperature": 0,
             "response_format": {"type": "json_object"},
@@ -96,11 +96,9 @@ def parse_text(text: str) -> list[dict[str, str]]:
                 },
                 {"role": "user", "content": text},
             ],
-        },
-        timeout=90,
+        }
     )
-    resp.raise_for_status()
-    content = resp.json()["choices"][0]["message"]["content"]
+    content = data["choices"][0]["message"]["content"]
     content = re.sub(r"^```(?:json)?|```$", "", content.strip()).strip()
     leads = json.loads(content).get("leads", [])
     return [{k: str(v or "") for k, v in lead.items() if k in LEAD_FIELDS} for lead in leads]

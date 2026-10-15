@@ -39,6 +39,9 @@ LEAD_FIELDS = [
     "city",
     "state",
     "employees",
+    "seniority",
+    "keywords",
+    "technologies",
 ]
 SYSTEM_FIELDS = [
     "status",
@@ -74,6 +77,11 @@ def init_db() -> None:
         conn.execute(
             f"CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, {cols})"
         )
+        # Add columns introduced after the database was first created.
+        existing = {r["name"] for r in conn.execute("PRAGMA table_info(leads)")}
+        for f in LEAD_FIELDS + SYSTEM_FIELDS:
+            if f not in existing:
+                conn.execute(f"ALTER TABLE leads ADD COLUMN {f} TEXT")
         conn.execute(
             """CREATE TABLE IF NOT EXISTS activity (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,7 +144,9 @@ def add_leads(leads: list[dict[str, str]]) -> tuple[list[int], int]:
 
 def get_lead(lead_id: int) -> dict[str, Any] | None:
     with _connect() as conn:
-        row = conn.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
+        row = conn.execute(
+            f"SELECT *, {EMAILS_SENT_SQL} AS emails_sent FROM leads WHERE id = ?", (lead_id,)
+        ).fetchone()
         if not row:
             return None
         lead = dict(row)
@@ -150,12 +160,18 @@ def get_lead(lead_id: int) -> dict[str, Any] | None:
         return lead
 
 
+# How many of the 3 emails were logged as sent (kept after the lead replies).
+EMAILS_SENT_SQL = """(SELECT COUNT(*) FROM activity a WHERE a.lead_id = leads.id
+    AND (a.event LIKE 'Initial email sent%' OR a.event LIKE 'Follow-up _ sent%'))"""
+
+
 def list_leads() -> list[dict[str, Any]]:
     with _connect() as conn:
         return [
             dict(r)
             for r in conn.execute(
-                "SELECT * FROM leads ORDER BY COALESCE(next_follow_up_at, '9999'), id DESC"
+                f"SELECT *, {EMAILS_SENT_SQL} AS emails_sent FROM leads "
+                "ORDER BY COALESCE(next_follow_up_at, '9999'), id DESC"
             )
         ]
 

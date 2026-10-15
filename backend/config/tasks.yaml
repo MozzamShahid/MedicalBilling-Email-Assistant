@@ -72,59 +72,171 @@ research_task:
 
 email_task:
   description: |
-    Write a 3-email cold outreach sequence to {full_name} ({title} at {company}),
-    based on the research brief from the previous task.
+    Write a 3-email cold outreach sequence to {full_name} ({title} at {company}).
+
+    WHAT YOU KNOW ABOUT THE LEAD:
+    {research}
 
     SENDER PROFILE (the only source for claims about the sender):
     {sender_block}
 
-    THE STRUCTURE OF EMAIL 1:
-    1. First line: one specific observation about their practice or about them,
-       taken from "Personalization hooks". It must be something only this practice
-       could receive. No compliments ("impressive", "love what you're doing").
-       Never open with "I", "My name is", "Hope", or "I came across".
-    2. Bridge: connect that observation to ONE billing pain from the brief, and
-       say it the way a practice manager would ("when a practice adds a second
-       location, credentialing the new providers usually stalls claims for weeks").
-       Phrase it as what typically happens, not as an accusation about them.
-    3. One sentence on what the sender does about that pain. Use a proof point
-       only if one is in the sender profile, word for word in meaning. Never invent numbers.
-    4. CTA: one low-friction yes/no question. Follow the sender's cta_style.
-    5. Sign-off: sender name, title, company. Nothing else.
+    WHO YOU ARE WRITING TO: a physician or practice leader. Smart, busy,
+    protective of their time and their patients, and tired of vendors. They
+    reply to emails that feel written by a peer who genuinely gets their day:
+    the charting at 9pm, the claims that come back unpaid for work already done,
+    the new provider who can't bill for months. Make them think "this person
+    understands my practice, and yes, I could use that."
 
-    HARD RULES (apply to all three emails):
-    - NO INVENTED CLAIMS. Do not write any number, percentage, dollar amount,
-      result, client, or "I've seen..." experience unless it appears in the sender
-      profile's proof_points. "Practices like yours often..." is fine; "we recover
-      5-7%" is not, unless it's a listed proof point.
-    - Never quote or point at negative patient reviews, lawsuits, or complaints.
-      Use them only as private evidence for which pain to pick. The email should
-      read as helpful, never as "I found dirt on you".
-    - Don't assume who the reader is ("I know you're not the billing team").
-    - Email 1 body: 60-110 words. Follow-ups: 30-70 words each.
-    - Subject lines: 2-6 words, lowercase except proper nouns, no punctuation
-      tricks, no "Re:", no "Quick question". Referencing the practice, the
-      location, or the pain works best (e.g. "billing for the frisco office").
-    - Plain text only. No bullet points, no bold, no links except the calendar
-      link if one is provided. No emojis. No em dashes.
-    - Banned words and phrases: "I hope this email finds you well", "reaching out",
+    STEP 1, PICK THE ANGLE (think before writing):
+    - Find the most specific true detail about them: a new location or
+      provider, a signature procedure, their sub-specialty, their city, years
+      in practice, the EHR in their Apollo "technologies" or website.
+    - Pick ONE pain that detail makes likely (the playbook is hints only).
+    - Pick ONE sender service that solves it: growing, new providers or
+      locations -> credentialing; insurance-heavy, procedures, many payers ->
+      eligibility checks and denial fixes; provider-led small practice, long
+      charting -> medical scribing.
+    - If they use one of the sender's ehr_systems, mention it once, naturally.
+
+    SUBJECT LINE (the most important line; decide it last, after the body):
+    - 3-6 words, sentence case, about THEM, specific enough that it could only
+      go to this practice. It should read like a note from a colleague, spark
+      mild curiosity, and never sound like an ad.
+    - Strong shapes (fill in with THIS lead's own details; never reuse these
+      words): "Dr. <Last name>, the <their new thing>" / "a thought on <their
+      office or location>" / "<their procedure> and <the pain>" / "<the pain
+      in their words>?".
+    - If they are a physician, use "Dr. <Last name>", never their first name.
+    - Never: "Quick question", "Partnership", "Billing services", "Re:",
+      anything with the sender's company name, ALL CAPS, "!" or "?" tricks.
+    - Write 3 options in your head; use the best as `subject` and list the
+      other two in personalization_notes as "Other subjects: ... | ...".
+
+    EMAIL 1 (body 60-95 words, excluding greeting and sign-off):
+    - "Hi Dr. <Last name>," if they are an MD/DO, else "Hi {first_name},".
+    - Opener (1 sentence): warm and specific to them. Notice something real
+      and say why it matters, like a colleague would ("Opening a third Bayou
+      City office in Cypress is a big step."). No generic praise. Never start
+      with "I", "My name is", "Hope", or "I came across".
+    - Intro (1 sentence): who the sender is, using the sender's `intro`. Say
+      "practices in <their state>" ONLY if their state is in client_states;
+      otherwise say "practices across the US". Keep the team location, said
+      plainly and with confidence.
+    - Empathy (1 sentence): the one pain in the doctor's terms (time,
+      patients, getting paid for work already done), as something that
+      commonly happens, never as a criticism of them.
+    - Help (1 sentence): what Clinirev does about it, concretely.
+    - Ask (1 short question): easy to say yes to, following cta_style.
+    - Sign-off on two lines: "<sender_name>" then "<sender_title>, <company_name>".
+
+    EXAMPLE of the tone and shape. The practice is made up: never copy its
+    facts or sentences, write fresh ones for this lead.
+      Hi Dr. Moreno,
+
+      Bringing Dr. Shah on board at Lakeview Family Medicine must already be
+      easing the wait for new patients in Plano.
+
+      I'm Dr. Anas. I run Clinirev, a medical billing company, and my team in
+      Pakistan works with physician practices across the US.
+
+      The frustrating part of a new provider is usually the gap: months of
+      payer credentialing before her visits actually get paid.
+
+      We take that credentialing off your plate start to finish, and we
+      already work in athenahealth every day.
+
+      Would a short call to map it out be useful?
+
+      Dr. Anas
+      CEO, Clinirev
+
+    FOLLOW-UP 1 (~3 days later, same thread, 30-50 words): warm and helpful,
+    one new idea or a different service that fits them. Don't repeat email 1
+    or apologize for writing again.
+    FOLLOW-UP 2 (~4 days after that, 25-40 words): a kind, graceful
+    close-the-loop note. Offer something free and useful (a quick look at
+    their denials, or a credentialing checklist for a new provider) and make
+    "not now" or "talk to our office manager" easy.
+
+    HARD RULES (all three emails):
+    - Every sentence must earn its place. One idea per email.
+    - NO INVENTED CLAIMS. No numbers, percentages, dollar amounts, results, or
+      client names unless they are in the sender's proof_points. Never claim
+      clients in a state that isn't in client_states.
+    - Only offer services in the sender's services list (no prior auths,
+      coding audits, patient statements, etc.).
+    - Only state facts about the lead that appear in WHAT YOU KNOW above. If
+      the data is thin, use their specialty and city rather than guess.
+    - Never mention patient reviews, complaints, lawsuits, or public claims
+      data. Never imply they are doing something wrong.
+    - Never mention Apollo, lead data, or that you researched them.
+    - Layout: greeting on its own line, a blank line between every paragraph,
+      a blank line before the sign-off. Follow-ups also start with the same
+      greeting and are signed with just the sender_name.
+    - Plain text. No bullets, bold, or links (except calendar_link if set). No
+      emojis. No em dashes.
+    - Banned: "I hope this email finds you well", "reaching out", "reach out",
       "touch base", "circle back", "synergy", "leverage", "streamline",
       "revolutionize", "cutting-edge", "game-changer", "seamless", "unlock",
-      "in today's fast-paced", "I wanted to", "just following up", "bump".
-    - Use their first name once, in the greeting ("Hi {first_name},"). Use "Dr. <Last name>"
-      instead if they are a physician (MD/DO) and the brief confirms it.
-    - If the brief has WARNINGS that make the lead unusable (wrong person, closed
-      practice), still write the emails but begin `personalization_notes` with "CHECK LEAD:".
-    - If the sender profile still has placeholder values like "YOUR NAME", keep them as-is.
-
-    FOLLOW-UP 1 (sent ~3 days later, same thread): add new value. Use a different
-    pain hypothesis or a short, concrete insight about how practices like theirs
-    lose revenue. Don't summarize email 1.
-    FOLLOW-UP 2 (sent ~4 days after that, same thread): a short, polite close-the-loop
-    note. Offer something useful for free (e.g. a quick denial or A/R review) and
-    make it easy to say "not now" or name the right person.
+      "in today's fast-paced", "I wanted to", "just following up", "following
+      up", "bump", "solutions", "I know you're busy", "make an impact", "just wanted",
+      "quick addition", "no pressure".
+    - If the lead looks like a poor fit (resident or fellow, employee of a large
+      hospital system or national group with in-house billing, wrong person,
+      closed practice), still write the emails but begin personalization_notes
+      with "POOR FIT:" and the reason.
   expected_output: |
     JSON matching the EmailSequence schema: subject, body, follow_up_1_subject,
     follow_up_1_body, follow_up_2_subject, follow_up_2_body, personalization_notes
-    (1-3 sentences: which hook and which pain you used, with the source, so a human can
-    verify before sending).
+    (which detail, pain, and service you used and where the detail came from,
+    then "Other subjects: ... | ...", so a human can verify before sending).
+    Follow-up subjects can simply repeat `subject`; they are sent as replies.
+
+# Used by the "new subject ideas" button (one quick model call, no research).
+subject_prompt: |
+  You write cold email subject lines for Dr. Anas, CEO of Clinirev (medical
+  billing, credentialing, and scribing), writing to a physician or practice
+  leader. Doctors get dozens of vendor emails a day. A subject line wins the
+  open when it looks like a short personal note from a colleague, is clearly
+  about THEIR practice, and makes them curious enough to read one line.
+
+  THE LEAD:
+  {lead}
+
+  THE EMAIL THIS SUBJECT SITS ON (the subject must match what it talks about):
+  {email}
+
+  Write 6 subject lines, one in each style:
+  1. Their thing: the specific detail from the email, 2-4 words.
+     ("the Cypress opening", "your Mohs schedule")
+  2. A short honest question about them, 2-5 words.
+     ("credentialing for Cypress?", "who handles your denials?")
+  3. Their name plus the topic. ("Dr. Clos + the new office")
+  4. The pain in a doctor's own words, 2-5 words.
+     ("charting at 9pm", "paid for every Mohs case")
+  5. An idea for them, 2-5 words. ("an idea for Bayou City")
+  6. Your wildcard: the line YOU think this doctor is most likely to open.
+
+  RULES:
+  - If they are a physician (MD/DO), call them "Dr. <Last name>", never by
+    first name.
+  - Lowercase except names, places, and acronyms. No "!", no emojis, no ALL CAPS.
+  - Never: "quick question", "partnership", "billing services", "Clinirev",
+    "Re:", "Fwd:", "free", "opportunity", "solution", "boost", "%", "$".
+  - Nothing salesy, nothing clickbait, nothing that isn't true to the email.
+  - Each line must be different in wording, not just word order.
+
+  Return only JSON: {{"subjects": ["...", "...", "...", "...", "...", "..."]}}
+  with the strongest one FIRST.
+
+# Used by the per-email rewrite button. The full email_task rules are added above it.
+rewrite_prompt: |
+  The person reviewing this sequence did not like {which} and wants a fresh
+  version. Rewrite ONLY {which}, following every rule above for it. Take a
+  noticeably different approach (a different detail, pain, or service, or a
+  different way of saying it) while staying true to the facts.
+
+  THE CURRENT SEQUENCE (for context; don't repeat the other emails):
+  {sequence}
+
+  Return only JSON: {{"text": "<the new email body, with greeting and sign-off>"}}

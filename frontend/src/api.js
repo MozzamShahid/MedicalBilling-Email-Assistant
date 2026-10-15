@@ -1,6 +1,7 @@
 async function req(path, opts = {}) {
   const res = await fetch(`/api${path}`, opts);
   if (!res.ok) {
+    if (res.status === 401 && path !== "/login") window.dispatchEvent(new Event("logged-out"));
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `${res.status} ${res.statusText}`);
   }
@@ -14,6 +15,11 @@ const json = (method, body) => ({
 });
 
 export const api = {
+  me: () => req("/me"),
+  login: (email, password) => req("/login", json("POST", { email, password })),
+  logout: () => req("/logout", { method: "POST" }),
+  rewrite: (id, field) => req(`/leads/${id}/rewrite`, json("POST", { field })),
+  subjects: (id) => req(`/leads/${id}/subjects`, { method: "POST" }),
   leads: () => req("/leads"),
   lead: (id) => req(`/leads/${id}`),
   stats: () => req("/stats"),

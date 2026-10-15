@@ -37,7 +37,7 @@ button, .btn {
 }
 button:hover, .btn:hover { border-color: #c4ccd6; }
 button:disabled, .btn.disabled { opacity: 0.5; pointer-events: none; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary, .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button.danger { color: var(--danger); }
 button.small, .btn.small { padding: 3px 8px; font-size: 12px; }
 .check { display: flex; gap: 6px; align-items: center; color: var(--muted); }
@@ -105,3 +105,24 @@ select { width: auto; }
   .search { min-width: 0; width: 100%; }
   .stat { min-width: 0; flex: 1; }
 }
+
+/* Sequence progress: Email 1 / FU 1 / FU 2 */
+.steps { display: flex; gap: 4px; }
+.step { font-size: 11px; padding: 2px 6px; border-radius: 999px; background: #f1f3f5; color: var(--muted); white-space: nowrap; }
+.step.done { background: #e3f6ec; color: var(--good); }
+.step.next { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.email-card.sent { opacity: 0.75; }
+.email-card.next { border-color: var(--accent); }
+.send-state { font-size: 12px; }
+.send-state.done { color: var(--good); }
+.send-state.next { color: var(--accent); font-weight: 600; }
+.confirm-sent { display: flex; gap: 8px; align-items: center; background: var(--accent-soft); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.thread-subject { font-size: 13px; color: var(--muted); }
+.bulk-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+.subject-row { display: flex; gap: 6px; }
+.subject-row input { flex: 1; }
+.ideas { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+.idea { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.idea:hover { border-color: var(--accent); }
+.title-row { display: flex; gap: 12px; align-items: center; }
+.login { max-width: 320px; margin: 15vh auto; display: flex; flex-direction: column; gap: 10px; }
