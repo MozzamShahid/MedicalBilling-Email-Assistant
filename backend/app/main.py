@@ -60,10 +60,17 @@ class Login(BaseModel):
 
 
 @app.post("/api/login")
-def login(body: Login) -> Response:
+def login(body: Login, request: Request) -> Response:
     cookie, role = auth.login(body.email, body.password)
     resp = JSONResponse({"email": body.email.strip().lower(), "role": role})
-    resp.set_cookie(auth.COOKIE, cookie, max_age=auth.MAX_AGE, httponly=True, samesite="lax")
+    resp.set_cookie(
+        auth.COOKIE,
+        cookie,
+        max_age=auth.MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",  # online (Railway) the cookie only travels over https
+    )
     return resp
 
 

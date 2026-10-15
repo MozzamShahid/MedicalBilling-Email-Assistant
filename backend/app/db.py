@@ -1,10 +1,13 @@
-"""SQLite storage for the lead CRM."""
+"""Storage for the lead CRM: Postgres (e.g. Supabase) when DATABASE_URL is set,
+otherwise a local SQLite file. Queries are written once with ? placeholders."""
 
+import os
 import sqlite3
 import threading
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "crm.db"
 
@@ -61,35 +64,91 @@ SYSTEM_FIELDS = [
     "updated_at",
 ]
 
-_lock = threading.Lock()
+_sqlite_lock = threading.Lock()
 
 
-def _connect() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+def pg_url() -> str:
+    return os.getenv("DATABASE_URL", "").strip()
 
 
-def init_db() -> None:
+class Conn:
+    """One connection with a tiny query API that hides SQLite/Postgres differences."""
+
+    def __init__(self, raw: Any, pg: bool):
+        self.raw, self.pg = raw, pg
+
+    def q(self, sql: str, params: tuple | list = ()) -> list[dict[str, Any]]:
+        if self.pg:
+            sql = sql.replace("%", "%%").replace("?", "%s")
+        cur = self.raw.execute(sql, params)
+        if cur.description is None:
+            return []
+        return [dict(r) for r in cur.fetchall()]
+
+    def one(self, sql: str, params: tuple | list = ()) -> dict[str, Any] | None:
+        rows = self.q(sql, params)
+        return rows[0] if rows else None
+
+
+@contextmanager
+def connect(write: bool = False, url: str | None = None) -> Iterator[Conn]:
+    """Open a connection, commit on success, always close.
+
+    Connections are short-lived on purpose: nothing stays open while the app is
+    idle, so a sleeping host (Railway serverless) can actually go to sleep.
+    `url=""` forces the local SQLite file (used by the Supabase migration)."""
+    url = pg_url() if url is None else url
+    if url:
+        import psycopg
+        from psycopg.rows import dict_row
+
+        # prepare_threshold=None: Supabase's transaction pooler can't use prepared statements.
+        raw = psycopg.connect(url, row_factory=dict_row, prepare_threshold=None)
+    else:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        raw = sqlite3.connect(DB_PATH, check_same_thread=False)
+        raw.row_factory = sqlite3.Row
+    # SQLite allows one writer at a time; Postgres handles concurrency itself.
+    with _sqlite_lock if (write and not url) else nullcontext():
+        try:
+            yield Conn(raw, bool(url))
+            raw.commit()
+        finally:
+            raw.close()
+
+
+def init_db(url: str | None = None) -> None:
     cols = ",\n".join(f"{f} TEXT" for f in LEAD_FIELDS + SYSTEM_FIELDS)
-    with _connect() as conn:
-        conn.execute(
-            f"CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, {cols})"
-        )
-        # Add columns introduced after the database was first created.
-        existing = {r["name"] for r in conn.execute("PRAGMA table_info(leads)")}
-        for f in LEAD_FIELDS + SYSTEM_FIELDS:
-            if f not in existing:
-                conn.execute(f"ALTER TABLE leads ADD COLUMN {f} TEXT")
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS activity (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+    with connect(write=True, url=url) as db:
+        id_col = "BIGSERIAL PRIMARY KEY" if db.pg else "INTEGER PRIMARY KEY AUTOINCREMENT"
+        db.q(f"CREATE TABLE IF NOT EXISTS leads (id {id_col}, {cols})")
+        db.q(
+            f"""CREATE TABLE IF NOT EXISTS activity (
+                id {id_col},
                 lead_id INTEGER NOT NULL,
                 at TEXT NOT NULL,
                 event TEXT NOT NULL
             )"""
         )
+        db.q("CREATE INDEX IF NOT EXISTS activity_lead_id ON activity (lead_id)")
+        # Add columns introduced after the database was first created.
+        if db.pg:
+            existing = {
+                r["column_name"]
+                for r in db.q(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = current_schema() AND table_name = 'leads'"
+                )
+            }
+            # Supabase exposes the public schema over its web API; with row level
+            # security on and no policies, only this app's direct connection can read it.
+            db.q("ALTER TABLE leads ENABLE ROW LEVEL SECURITY")
+            db.q("ALTER TABLE activity ENABLE ROW LEVEL SECURITY")
+        else:
+            existing = {r["name"] for r in db.q("PRAGMA table_info(leads)")}
+        for f in LEAD_FIELDS + SYSTEM_FIELDS:
+            if f not in existing:
+                db.q(f"ALTER TABLE leads ADD COLUMN {f} TEXT")
 
 
 def now() -> str:
@@ -97,11 +156,8 @@ def now() -> str:
 
 
 def log(lead_id: int, event: str) -> None:
-    with _lock, _connect() as conn:
-        conn.execute(
-            "INSERT INTO activity (lead_id, at, event) VALUES (?, ?, ?)",
-            (lead_id, now(), event),
-        )
+    with connect(write=True) as db:
+        db.q("INSERT INTO activity (lead_id, at, event) VALUES (?, ?, ?)", (lead_id, now(), event))
 
 
 def add_leads(leads: list[dict[str, str]]) -> tuple[list[int], int]:
@@ -109,55 +165,35 @@ def add_leads(leads: list[dict[str, str]]) -> tuple[list[int], int]:
 
     Returns (new ids, number of duplicates skipped)."""
     ids, skipped = [], 0
-    with _lock, _connect() as conn:
+    with connect(write=True) as db:
         for lead in leads:
             email = (lead.get("email") or "").strip().lower()
             dup = None
             if email:
-                dup = conn.execute(
-                    "SELECT id FROM leads WHERE lower(email) = ?", (email,)
-                ).fetchone()
+                dup = db.one("SELECT id FROM leads WHERE lower(email) = ?", (email,))
             if not dup:
-                dup = conn.execute(
+                dup = db.one(
                     "SELECT id FROM leads WHERE lower(first_name)=? AND lower(last_name)=? AND lower(company)=?",
                     tuple(
                         (lead.get(k) or "").strip().lower()
                         for k in ("first_name", "last_name", "company")
                     ),
-                ).fetchone()
+                )
             if dup:
                 skipped += 1
                 continue
             row = {k: (lead.get(k) or "").strip() for k in LEAD_FIELDS}
             row.update(status="new", created_at=now(), updated_at=now())
-            cur = conn.execute(
-                f"INSERT INTO leads ({', '.join(row)}) VALUES ({', '.join('?' * len(row))})",
+            new_id = db.one(
+                f"INSERT INTO leads ({', '.join(row)}) VALUES ({', '.join('?' * len(row))}) RETURNING id",
                 list(row.values()),
-            )
-            ids.append(cur.lastrowid)
-            conn.execute(
+            )["id"]
+            ids.append(new_id)
+            db.q(
                 "INSERT INTO activity (lead_id, at, event) VALUES (?, ?, ?)",
-                (cur.lastrowid, now(), "Imported"),
+                (new_id, now(), "Imported"),
             )
     return ids, skipped
-
-
-def get_lead(lead_id: int) -> dict[str, Any] | None:
-    with _connect() as conn:
-        row = conn.execute(
-            f"SELECT *, {EMAILS_SENT_SQL} AS emails_sent FROM leads WHERE id = ?", (lead_id,)
-        ).fetchone()
-        if not row:
-            return None
-        lead = dict(row)
-        lead["activity"] = [
-            dict(a)
-            for a in conn.execute(
-                "SELECT at, event FROM activity WHERE lead_id = ? ORDER BY id DESC",
-                (lead_id,),
-            )
-        ]
-        return lead
 
 
 # How many of the 3 emails were logged as sent (kept after the lead replies).
@@ -165,15 +201,25 @@ EMAILS_SENT_SQL = """(SELECT COUNT(*) FROM activity a WHERE a.lead_id = leads.id
     AND (a.event LIKE 'Initial email sent%' OR a.event LIKE 'Follow-up _ sent%'))"""
 
 
+def get_lead(lead_id: int) -> dict[str, Any] | None:
+    with connect() as db:
+        lead = db.one(
+            f"SELECT *, {EMAILS_SENT_SQL} AS emails_sent FROM leads WHERE id = ?", (lead_id,)
+        )
+        if not lead:
+            return None
+        lead["activity"] = db.q(
+            "SELECT at, event FROM activity WHERE lead_id = ? ORDER BY id DESC", (lead_id,)
+        )
+        return lead
+
+
 def list_leads() -> list[dict[str, Any]]:
-    with _connect() as conn:
-        return [
-            dict(r)
-            for r in conn.execute(
-                f"SELECT *, {EMAILS_SENT_SQL} AS emails_sent FROM leads "
-                "ORDER BY COALESCE(next_follow_up_at, '9999'), id DESC"
-            )
-        ]
+    with connect() as db:
+        return db.q(
+            f"SELECT *, {EMAILS_SENT_SQL} AS emails_sent FROM leads "
+            "ORDER BY COALESCE(next_follow_up_at, '9999'), id DESC"
+        )
 
 
 def update_lead(lead_id: int, **fields: Any) -> None:
@@ -182,17 +228,17 @@ def update_lead(lead_id: int, **fields: Any) -> None:
     if not fields:
         return
     fields["updated_at"] = now()
-    with _lock, _connect() as conn:
-        conn.execute(
+    with connect(write=True) as db:
+        db.q(
             f"UPDATE leads SET {', '.join(f'{k} = ?' for k in fields)} WHERE id = ?",
             [*fields.values(), lead_id],
         )
 
 
 def delete_lead(lead_id: int) -> None:
-    with _lock, _connect() as conn:
-        conn.execute("DELETE FROM leads WHERE id = ?", (lead_id,))
-        conn.execute("DELETE FROM activity WHERE lead_id = ?", (lead_id,))
+    with connect(write=True) as db:
+        db.q("DELETE FROM leads WHERE id = ?", (lead_id,))
+        db.q("DELETE FROM activity WHERE lead_id = ?", (lead_id,))
 
 
 def mark_sent(lead_id: int, follow_up_days: list[int]) -> dict[str, Any]:
