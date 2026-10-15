@@ -71,7 +71,7 @@ Tune these in `backend/.env`:
 | `RESEARCH_MODE` | `basic` | `basic`: Apollo data + website only, no web searches (cheapest). `deep`: adds the web-search research agent |
 | `LLM_PROVIDER` | `openrouter` | `deepseek` calls the DeepSeek API directly (set `DEEPSEEK_API_KEY`) |
 | `RESEARCH_MODEL` | `deepseek/deepseek-v4-flash` | researcher, web search, and text-import model |
-| `WRITER_MODEL` | `deepseek/deepseek-v4-pro` | email writer model |
+| `WRITER_MODEL` | `deepseek/deepseek-v4-flash` | email writer model |
 | `WEB_SEARCH_BUDGET` | `4` | max web searches per lead |
 | `MAX_PARALLEL_LEADS` | `3` | leads researched at the same time |
 | `FOLLOW_UP_DAYS` | `3,4` | days until follow-up 1, then follow-up 2 |
