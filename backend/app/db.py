@@ -179,27 +179,36 @@ def log(lead_id: int, event: str) -> None:
         db.q("INSERT INTO activity (lead_id, at, event) VALUES (?, ?, ?)", (lead_id, now(), event))
 
 
-def add_leads(leads: list[dict[str, str]]) -> tuple[list[int], int]:
+def add_leads(leads: list[dict[str, str]]) -> tuple[list[int], list[dict[str, Any]]]:
     """Insert leads, skipping duplicates (same email, or same name + company).
 
-    Returns (new ids, number of duplicates skipped)."""
-    ids, skipped = [], 0
+    Returns (new ids, the skipped leads with who they matched and why)."""
+    ids, skipped = [], []
     with connect(write=True) as db:
         for lead in leads:
             email = (lead.get("email") or "").strip().lower()
             dup = None
             if email:
-                dup = db.one("SELECT id FROM leads WHERE lower(email) = ?", (email,))
+                dup = db.one("SELECT id, status FROM leads WHERE lower(email) = ?", (email,))
             if not dup:
                 dup = db.one(
-                    "SELECT id FROM leads WHERE lower(first_name)=? AND lower(last_name)=? AND lower(company)=?",
+                    "SELECT id, status FROM leads WHERE lower(first_name)=? AND lower(last_name)=? AND lower(company)=?",
                     tuple(
                         (lead.get(k) or "").strip().lower()
                         for k in ("first_name", "last_name", "company")
                     ),
                 )
             if dup:
-                skipped += 1
+                skipped.append(
+                    {
+                        "name": f"{lead.get('first_name') or ''} {lead.get('last_name') or ''}".strip(),
+                        "company": lead.get("company") or "",
+                        "email": lead.get("email") or "",
+                        "existing_id": dup["id"],
+                        "existing_status": dup["status"],
+                        "reason": "listed twice in this file" if dup["id"] in ids else "already in your list",
+                    }
+                )
                 continue
             row = {k: (lead.get(k) or "").strip() for k in LEAD_FIELDS}
             row.update(status="new", created_at=now(), updated_at=now())

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "./api.js";
+import { STATUS_LABELS } from "./App.jsx";
 
 export default function ImportDialog({ onClose, onDone }) {
   const [mode, setMode] = useState("csv");
@@ -32,10 +33,28 @@ export default function ImportDialog({ onClose, onDone }) {
         {result ? (
           <>
             <p>
-              Imported <b>{result.imported}</b> lead(s)
-              {result.skipped_duplicates > 0 && `, skipped ${result.skipped_duplicates} duplicate(s)`}.
+              <b>{result.imported}</b> new lead(s) imported.
               {autoRun && result.imported > 0 && " Research has started; rows update as each lead finishes."}
             </p>
+            {result.skipped?.length > 0 && (
+              <div className="skipped">
+                <p>
+                  <b>{result.skipped.length}</b> lead(s) rejected because they're duplicates (nothing was changed):
+                </p>
+                <ul>
+                  {result.skipped.map((s, i) => (
+                    <li key={i}>
+                      <b>{s.name || s.email || "(no name)"}</b>
+                      {s.company && `, ${s.company}`}
+                      <span className="muted">
+                        {" "}· {s.reason}
+                        {s.reason === "already in your list" && ` (${STATUS_LABELS[s.existing_status] || s.existing_status})`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="modal-actions">
               <button className="primary" onClick={onDone}>Done</button>
             </div>

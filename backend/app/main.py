@@ -170,7 +170,7 @@ async def import_leads(
     ids, skipped = db.add_leads(leads)
     if auto_run:
         _queue(ids)
-    return {"imported": len(ids), "skipped_duplicates": skipped, "ids": ids}
+    return {"imported": len(ids), "skipped_duplicates": len(skipped), "skipped": skipped, "ids": ids}
 
 
 class RunRequest(BaseModel):
