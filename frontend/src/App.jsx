@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api.js";
 import ImportDialog from "./ImportDialog.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
@@ -103,8 +103,24 @@ function Crm({ user, onLogout }) {
   const [showImport, setShowImport] = useState(false);
   const [withResearch, setWithResearch] = useState(false);
   const [error, setError] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [working, setWorking] = useState(false); // a toolbar/bulk action is in flight
 
-  const refresh = useCallback(() => api.leads().then(setLeads).catch((e) => setError(e.message)), []);
+  // The list can take a few seconds from the cloud database; never stack requests.
+  const inFlight = useRef(null);
+  const refresh = useCallback(() => {
+    if (!inFlight.current) {
+      inFlight.current = api
+        .leads()
+        .then((l) => {
+          setLeads(l);
+          setLoaded(true);
+        })
+        .catch((e) => setError(e.message))
+        .finally(() => (inFlight.current = null));
+    }
+    return inFlight.current;
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -134,11 +150,15 @@ function Crm({ user, onLogout }) {
   }, [leads, view, search]);
 
   const act = async (fn) => {
+    if (working) return; // ignore double clicks while the last action runs
     setError("");
+    setWorking(true);
     try {
       await fn();
     } catch (e) {
       setError(e.message);
+    } finally {
+      setWorking(false);
     }
     refresh();
   };
@@ -195,6 +215,7 @@ function Crm({ user, onLogout }) {
       <div className="toolbar">
         {isAdmin && <button className="primary" onClick={() => setShowImport(true)}>+ Import leads</button>}
         {isAdmin && <button
+          disabled={working}
           onClick={() => act(() => api.run(selectedIds.length ? selectedIds : null))}
           title="Research leads and draft emails. With nothing selected, runs every New / Error lead."
         >
@@ -318,7 +339,7 @@ function Crm({ user, onLogout }) {
             {!shown.length && (
               <tr>
                 <td colSpan={8} className="empty">
-                  {leads.length ? "Nothing in this view." : "No leads yet. Click “Import leads” to add a CSV or paste text."}
+                  {!loaded ? "Loading leads…" : leads.length ? "Nothing in this view." : "No leads yet. Click “Import leads” to add a CSV or paste text."}
                 </td>
               </tr>
             )}

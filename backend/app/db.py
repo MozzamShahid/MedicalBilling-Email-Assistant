@@ -103,7 +103,7 @@ def _pool(url: str) -> Any:
         _pools[url] = ConnectionPool(
             url,
             min_size=0,
-            max_size=5,
+            max_size=10,
             max_idle=120,
             # prepare_threshold=None: Supabase's transaction pooler can't use prepared statements.
             kwargs={"row_factory": dict_row, "prepare_threshold": None},
@@ -265,6 +265,34 @@ def update_lead(lead_id: int, **fields: Any) -> None:
         db.q(
             f"UPDATE leads SET {', '.join(f'{k} = ?' for k in fields)} WHERE id = ?",
             [*fields.values(), lead_id],
+        )
+
+
+def claim_for_research(lead_id: int) -> str | None:
+    """Mark a lead as researching unless it already is.
+
+    Returns its previous status, or None if it was already taken (or missing)."""
+    with connect(write=True) as db:
+        row = db.one("SELECT status FROM leads WHERE id = ?", (lead_id,))
+        if not row or row["status"] == "researching":
+            return None
+        # Compare-and-set: only one caller can move it out of its previous status.
+        claimed = db.one(
+            "UPDATE leads SET status = 'researching', error = '', updated_at = ? "
+            "WHERE id = ? AND status = ? RETURNING id",
+            (now(), lead_id, row["status"]),
+        )
+        return row["status"] if claimed else None
+
+
+def reset_stuck_research(minutes: int) -> None:
+    """Put leads that have been 'researching' for too long back to new/drafted."""
+    cutoff = (datetime.now() - timedelta(minutes=minutes)).isoformat(timespec="seconds")
+    with connect(write=True) as db:
+        db.q(
+            "UPDATE leads SET status = CASE WHEN COALESCE(body, '') = '' THEN 'new' ELSE 'drafted' END "
+            "WHERE status = 'researching' AND updated_at < ?",
+            (cutoff,),
         )
 
 

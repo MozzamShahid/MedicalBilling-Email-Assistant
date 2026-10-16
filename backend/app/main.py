@@ -87,9 +87,9 @@ def me(request: Request) -> dict[str, str]:
 
 db.init_db()
 # A restart kills in-flight jobs; put those leads back so they can be re-run.
-for _lead in db.list_leads():
-    if _lead["status"] == "researching":
-        db.update_lead(_lead["id"], status="drafted" if _lead["body"] else "new")
+# Only leads stuck for a while: another copy of the app (laptop or online)
+# may be researching the recent ones right now.
+db.reset_stuck_research(minutes=15)
 
 
 def _process(lead_id: int, prev_status: str) -> None:
@@ -114,10 +114,11 @@ def _process(lead_id: int, prev_status: str) -> None:
 def _queue(ids: list[int]) -> list[int]:
     queued = []
     for lead_id in ids:
-        lead = db.get_lead(lead_id)
-        if lead and lead["status"] != "researching":
-            db.update_lead(lead_id, status="researching", error="")
-            pool.submit(_process, lead_id, lead["status"])
+        # Claimed atomically, so two clicks (or the laptop and the online app)
+        # can never research the same lead twice at once.
+        prev_status = db.claim_for_research(lead_id)
+        if prev_status is not None:
+            pool.submit(_process, lead_id, prev_status)
             queued.append(lead_id)
     return queued
 
