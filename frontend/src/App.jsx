@@ -235,6 +235,15 @@ function Crm({ user, onLogout }) {
             Check emails
           </button>
         )}
+        {isAdmin && (
+          <a
+            className="btn"
+            href="/api/apollo-exclude.csv"
+            title="Every lead you already have, to import into each Apollo account as a list and exclude from searches"
+          >
+            Download for Apollo
+          </a>
+        )}
         <span className="spacer" />
         <label className="check">
           <input type="checkbox" checked={withResearch} onChange={(e) => setWithResearch(e.target.checked)} />

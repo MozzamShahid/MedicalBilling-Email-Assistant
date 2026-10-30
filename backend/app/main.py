@@ -174,6 +174,36 @@ async def import_leads(
     return {"imported": len(ids), "skipped_duplicates": len(skipped), "skipped": skipped, "ids": ids}
 
 
+@app.get("/api/apollo-exclude.csv", dependencies=[Depends(auth.require_admin)])
+def apollo_exclude() -> Response:
+    """Every lead we already have, in a CSV Apollo can import as a list to
+    exclude from searches, so no Apollo account pays for the same person twice."""
+    import csv
+    import io
+
+    cols = {
+        "First Name": "first_name",
+        "Last Name": "last_name",
+        "Email": "email",
+        "Company": "company",
+        "Website": "website",
+        "Person Linkedin Url": "linkedin",
+        "City": "city",
+        "State": "state",
+    }
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(cols)
+    for lead in db.list_leads():
+        writer.writerow([lead.get(f) or "" for f in cols.values()])
+    name = f"apollo-exclude-{date.today().isoformat()}.csv"
+    return Response(
+        out.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+
+
 @app.post("/api/leads/check-emails", dependencies=[Depends(auth.require_admin)])
 def check_emails() -> dict[str, int]:
     """Re-run the free bounce check (Apollo status, format, mail server) on every lead."""
