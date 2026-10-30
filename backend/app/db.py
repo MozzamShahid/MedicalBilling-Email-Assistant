@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterator
 
+from . import emailcheck
+
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "crm.db"
 
 # Pipeline stages, in order. "researching" and "error" are system states.
@@ -45,6 +47,8 @@ LEAD_FIELDS = [
     "seniority",
     "keywords",
     "technologies",
+    "email_status",
+    "email_catch_all",
 ]
 SYSTEM_FIELDS = [
     "status",
@@ -57,6 +61,7 @@ SYSTEM_FIELDS = [
     "follow_up_2_body",
     "personalization_notes",
     "notes",
+    "email_check",
     "error",
     "last_contacted_at",
     "next_follow_up_at",
@@ -212,6 +217,9 @@ def add_leads(leads: list[dict[str, str]]) -> tuple[list[int], list[dict[str, An
                 continue
             row = {k: (lead.get(k) or "").strip() for k in LEAD_FIELDS}
             row.update(status="new", created_at=now(), updated_at=now())
+            row["email_check"] = emailcheck.check(
+                row["email"], row["email_status"], row["email_catch_all"]
+            )
             new_id = db.one(
                 f"INSERT INTO leads ({', '.join(row)}) VALUES ({', '.join('?' * len(row))}) RETURNING id",
                 list(row.values()),
@@ -320,3 +328,16 @@ def mark_sent(lead_id: int, follow_up_days: list[int]) -> dict[str, Any]:
     label = ["Initial email", "Follow-up 1", "Follow-up 2"][touch]
     log(lead_id, f"{label} sent" + (f"; next follow-up {next_at}" if next_at else ""))
     return get_lead(lead_id)
+
+
+def recheck_emails() -> dict[str, int]:
+    """Run the email check on every lead again; returns how many are ok / risky / bad."""
+    counts = {"ok": 0, "risky": 0, "bad": 0}
+    with connect() as db:
+        rows = db.q("SELECT id, email, email_status, email_catch_all FROM leads")
+    for r in rows:
+        result = emailcheck.check(r["email"], r["email_status"] or "", r["email_catch_all"] or "")
+        counts[result.split(":")[0]] += 1
+        with connect(write=True) as db:
+            db.q("UPDATE leads SET email_check = ? WHERE id = ?", (result, r["id"]))
+    return counts

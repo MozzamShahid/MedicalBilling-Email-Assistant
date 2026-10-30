@@ -1,7 +1,7 @@
 import { marked } from "marked";
 import { useEffect, useState } from "react";
 import { api } from "./api.js";
-import { NEXT_SEND, STATUS_LABELS, emailsSent, fullName, gmailUrl, nextStep } from "./App.jsx";
+import { EmailCheck, NEXT_SEND, STATUS_LABELS, emailsSent, fullName, gmailUrl, nextStep } from "./App.jsx";
 
 const EMAILS = [
   ["Email 1", "subject", "body"],
@@ -145,6 +145,14 @@ export default function LeadDrawer({ id, leads, isAdmin, onClose, onChange }) {
           )}
           {msg && <span className="flash">{msg}</span>}
         </div>
+        {lead.email_check && lead.email_check !== "ok" && (
+          <div className={lead.email_check.startsWith("bad") ? "error" : "warn-box"}>
+            <b>Email check:</b> {lead.email_check.replace(/^(bad|risky): /, "")}.{" "}
+            {lead.email_check.startsWith("bad")
+              ? "Don't send: it will bounce and hurt your sender reputation."
+              : "Send only if this lead is worth the risk; catch-all and shared inboxes bounce more often."}
+          </div>
+        )}
         {lead.next_follow_up_at && <div className="muted">Next follow-up: <b>{lead.next_follow_up_at}</b></div>}
         {lead.error && lead.status !== "researching" && <div className="error">{lead.error}</div>}
         {lead.status === "researching" && <div className="info">Writing the emails… this usually takes under a minute.</div>}

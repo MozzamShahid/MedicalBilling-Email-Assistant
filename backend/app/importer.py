@@ -47,6 +47,8 @@ HEADER_ALIASES = {
     "seniority": "seniority",
     "keywords": "keywords",
     "technologies": "technologies",
+    "email status": "email_status",
+    "primary email catch-all status": "email_catch_all",
 }
 
 

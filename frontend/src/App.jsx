@@ -221,6 +221,20 @@ function Crm({ user, onLogout }) {
         >
           {selectedIds.length ? `Research ${selectedIds.length} selected` : "Research all new"}
         </button>}
+        {isAdmin && (
+          <button
+            disabled={working}
+            title="Free bounce check: Apollo's verdict, address format, and whether the domain has a mail server"
+            onClick={() =>
+              act(async () => {
+                const c = await api.checkEmails();
+                alert(`Email check done: ${c.ok} ok, ${c.risky} risky, ${c.bad} bad.`);
+              })
+            }
+          >
+            Check emails
+          </button>
+        )}
         <span className="spacer" />
         <label className="check">
           <input type="checkbox" checked={withResearch} onChange={(e) => setWithResearch(e.target.checked)} />
@@ -304,7 +318,10 @@ function Crm({ user, onLogout }) {
                   <div>{l.company}</div>
                   <div className="muted">{[l.city, l.state].filter(Boolean).join(", ")}</div>
                 </td>
-                <td className="muted">{l.email}</td>
+                <td className="muted">
+                  {l.email}
+                  <EmailCheck check={l.email_check} />
+                </td>
                 <td><span className={`badge s-${l.status}`}>{STATUS_LABELS[l.status] || l.status}</span></td>
                 <td>
                   <div className="steps">
@@ -369,5 +386,16 @@ function Stat({ label, value, alert, good }) {
       <div className="value">{value}</div>
       <div className="label">{label}</div>
     </div>
+  );
+}
+
+// Small badge next to an email: nothing when it passed, amber when risky, red when it will bounce.
+export function EmailCheck({ check }) {
+  if (!check || check === "ok") return null;
+  const bad = check.startsWith("bad");
+  return (
+    <span className={`email-check ${bad ? "bad" : "risky"}`} title={check}>
+      {bad ? "won't deliver" : "risky"}
+    </span>
   );
 }

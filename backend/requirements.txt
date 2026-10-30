@@ -10,3 +10,4 @@ python-docx
 fpdf2
 psycopg[binary]
 psycopg-pool
+dnspython

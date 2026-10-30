@@ -11,7 +11,7 @@ from crewai import LLM, Agent, Crew, Process, Task
 from pydantic import BaseModel, Field
 
 from .db import LEAD_FIELDS
-from .llm import chat, litellm_model
+from .llm import chat, litellm_model, provider
 from .tools import make_web_search_tool, scrape_site, scrape_website_tool
 
 CONFIG = Path(__file__).resolve().parent.parent / "config"
@@ -34,9 +34,15 @@ def _load(name: str) -> dict[str, Any]:
 
 
 def _llm(env_var: str, default: str, temperature: float) -> LLM:
+    extra = {}
+    if provider() == "openrouter" and os.getenv("MODEL_REASONING", "off").lower() == "off":
+        # DeepSeek V4 otherwise "thinks" in thousands of hidden, billed tokens
+        # before writing a short email, which is slow and costs far more.
+        extra["extra_body"] = {"reasoning": {"enabled": False}}
     return LLM(
         model=litellm_model(env_var, default),
         temperature=temperature,
+        **({"additional_params": extra} if extra else {}),
     )
 
 

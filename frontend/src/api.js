@@ -24,6 +24,7 @@ export const api = {
   lead: (id) => req(`/leads/${id}`),
   stats: () => req("/stats"),
   importLeads: (form) => req("/leads/import", { method: "POST", body: form }),
+  checkEmails: () => req("/leads/check-emails", { method: "POST" }),
   run: (ids) => req("/leads/run", json("POST", { ids })),
   update: (id, fields) => req(`/leads/${id}`, json("PATCH", fields)),
   markSent: (id) => req(`/leads/${id}/sent`, { method: "POST" }),

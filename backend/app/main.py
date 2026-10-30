@@ -174,6 +174,12 @@ async def import_leads(
     return {"imported": len(ids), "skipped_duplicates": len(skipped), "skipped": skipped, "ids": ids}
 
 
+@app.post("/api/leads/check-emails", dependencies=[Depends(auth.require_admin)])
+def check_emails() -> dict[str, int]:
+    """Re-run the free bounce check (Apollo status, format, mail server) on every lead."""
+    return db.recheck_emails()
+
+
 class RunRequest(BaseModel):
     ids: list[int] | None = None  # None = every lead still in "new" or "error"
 
