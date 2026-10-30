@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Clinirev Apollo Duplicate Checker",
+  "version": "1.0.0",
+  "description": "Marks people you already have in the Clinirev CRM while you browse Apollo, so you don't spend credits on them twice.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://clinirev-outreach.onrender.com/*",
+    "http://localhost:8000/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://app.apollo.io/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": { "default_popup": "popup.html", "default_title": "Clinirev duplicate checker" }
+}

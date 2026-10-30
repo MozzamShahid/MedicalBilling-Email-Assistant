@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { width: 280px; margin: 0; padding: 14px; font: 13px/1.4 -apple-system, Segoe UI, sans-serif; color: #202124; }
+      h1 { font-size: 14px; margin: 0 0 10px; }
+      label { display: block; margin: 8px 0 3px; font-weight: 600; }
+      input, select { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
+      button { margin-top: 10px; padding: 6px 12px; border: 0; border-radius: 6px; background: #1a73e8; color: #fff; font: inherit; cursor: pointer; }
+      button.secondary { background: #eef1f4; color: #202124; }
+      #status { margin-top: 10px; padding: 8px; border-radius: 6px; background: #f1f3f4; }
+      #status.err { background: #fde8e7; color: #a50e0e; }
+    </style>
+  </head>
+  <body>
+    <h1>Clinirev duplicate checker</h1>
+    <label for="crm">CRM</label>
+    <select id="crm">
+      <option value="https://clinirev-outreach.onrender.com">Online (works anywhere)</option>
+      <option value="http://localhost:8000">This laptop (app must be running)</option>
+    </select>
+    <label for="code">Extension code</label>
+    <input id="code" type="password" placeholder="clinirev-..." />
+    <button id="save">Save and check</button>
+    <button id="refresh" class="secondary">Refresh list</button>
+    <div id="status">Not checked yet.</div>
+    <script src="popup.js"></script>
+  </body>
+</html>

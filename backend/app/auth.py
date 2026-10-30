@@ -63,3 +63,9 @@ def current_user(request: Request) -> dict[str, str] | None:
 def require_admin(request: Request) -> None:
     if request.state.user["role"] != "admin":
         raise HTTPException(403, "Only the admin can do this")
+
+
+def extension_token_ok(token: str) -> bool:
+    """The Apollo duplicate-checker extension sends EXTENSION_TOKEN from .env."""
+    expected = os.getenv("EXTENSION_TOKEN", "")
+    return bool(expected) and hmac.compare_digest(token.strip(), expected)

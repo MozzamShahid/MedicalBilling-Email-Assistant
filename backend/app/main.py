@@ -42,7 +42,11 @@ app.add_middleware(
 async def check_login(request: Request, call_next):
     """Every /api route except login needs a valid session cookie."""
     path = request.url.path
-    if path.startswith("/api/") and path not in ("/api/login", "/api/logout"):
+    if path == "/api/known":
+        # The Chrome extension authenticates with a shared code instead of a login.
+        if not auth.extension_token_ok(request.headers.get("X-Extension-Token", "")):
+            return JSONResponse({"detail": "Wrong extension code"}, status_code=401)
+    elif path.startswith("/api/") and path not in ("/api/login", "/api/logout"):
         user = auth.current_user(request)
         if not user:
             return JSONResponse({"detail": "Please log in"}, status_code=401)
@@ -172,6 +176,39 @@ async def import_leads(
     if auto_run:
         _queue(ids)
     return {"imported": len(ids), "skipped_duplicates": len(skipped), "skipped": skipped, "ids": ids}
+
+
+def _linkedin_slug(url: str) -> str:
+    """'https://www.linkedin.com/in/Jane-Doe-12/?x' -> 'jane-doe-12'."""
+    url = (url or "").lower().split("?")[0].rstrip("/")
+    return url.split("/in/", 1)[1] if "/in/" in url else ""
+
+
+def _name_key(first: str, last: str) -> str:
+    import re
+
+    name = f"{first or ''} {last or ''}".lower()
+    name = re.sub(r"\b(dr|md|do|mba|phd|faad|mph|pa-c|np)\b\.?", " ", name)
+    return " ".join(re.sub(r"[^a-z ]", " ", name).split())
+
+
+@app.get("/api/known")
+def known_leads() -> dict[str, Any]:
+    """Everyone already in the CRM, in a compact form for the Apollo extension:
+    LinkedIn profile ids, and names with their companies."""
+    with db.connect() as conn:
+        rows = conn.q("SELECT first_name, last_name, company, linkedin, email FROM leads")
+    names: dict[str, list[str]] = {}
+    for r in rows:
+        key = _name_key(r["first_name"], r["last_name"])
+        if key:
+            names.setdefault(key, []).append((r["company"] or "").lower())
+    return {
+        "count": len(rows),
+        "linkedin": sorted({s for r in rows if (s := _linkedin_slug(r["linkedin"]))}),
+        "names": names,
+        "emails": sorted({(r["email"] or "").lower() for r in rows if r["email"]}),
+    }
 
 
 @app.get("/api/apollo-exclude.csv", dependencies=[Depends(auth.require_admin)])
